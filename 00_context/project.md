@@ -19,7 +19,7 @@ Built in phases; see `01_product/output.md` for the full definition.
 ## Current stage
 
 Design. The product, architecture, and API stages were revised on 2026-10-20
-for paper trading. The data and QA stages are next.
+for paper trading. The data stage is done. The QA stage is next.
 
 ## Rules
 

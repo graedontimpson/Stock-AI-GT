@@ -142,8 +142,10 @@ A table with one row per trading day, oldest first.
 | `open` | Price at the start of the day |
 | `high` | Highest price of the day |
 | `low` | Lowest price of the day |
-| `close` | Price at the end of the day, adjusted so that stock splits do not show up as false jumps |
+| `close` | Price at the end of the day, adjusted so that stock splits do not show up as false jumps. Used for charts and the account |
+| `adj_close` | Close, also adjusted for dividends. Used for the model, backtest, and scorecard |
 | `volume` | Number of shares traded |
+| `filled` | Yes if this row was filled in for a missing day (see `04_data/output.md`) |
 
 ### `Quote`
 
@@ -303,7 +305,7 @@ One row in the trade list.
 | `buy_right`, `buy_total` | Buy suggestions that were right, out of how many marked |
 | `sell_right`, `sell_total` | The same for Sell |
 | `by_confidence` | The same counts split by low, medium, and high |
-| `avg_buy_change`, `avg_sell_change`, `avg_spy_change` | Average 3-month price change of Buy picks, Sell picks, and SPY over the same periods |
+| `avg_buy_change`, `avg_sell_change`, `avg_spy_change` | Average 3-month change in adjusted close of Buy picks, Sell picks, and SPY over the same periods |
 | `backtest` | The latest `BacktestResult`, shown until real results exist |
 
 ### `JevExplanation`

@@ -76,8 +76,9 @@ Runs the first time the site is opened each day, or by running
    prices for every S&P 500 stock and for SPY, plus new economic figures. SPY
    is a fund that tracks the whole S&P 500; it stands in for "the market".
 2. **Signals** calculates the model's inputs for every stock and day.
-3. **Model** retrains on all S&P 500 stocks, runs the backtest, and scores
-   every stock: its probability of rising over 3 months.
+3. **Model** retrains on all S&P 500 stocks and scores every stock: its
+   probability of rising over 3 months. Once a week it also reruns the
+   backtest; in between, the latest backtest result is reused.
 4. The pipeline turns each probability into **Buy**, **Hold**, or **Sell**,
    adds the confidence level, and ranks the top Buys and Sells.
 5. **Scorecard** saves today's suggestions and marks any from 3 months ago
@@ -273,7 +274,8 @@ folder is listed in `.gitignore`, so it is never committed.
 | Account settings | `data/account/account.json` | Starting cash, opening date, and SPY shares for the comparison |
 | Trades | `data/account/trades.csv` | One row per trade or split |
 | Archived accounts | `data/account/archive/<DATE>/` | Copies of the two files above, made on reset |
-| Daily scores and backtest | `data/results/<DATE>.json` | One file per day |
+| Daily scores | `data/results/<DATE>.json` | One file per day |
+| Backtest | `data/backtest/<DATE>.json` | One file per weekly run |
 | Suggestion log | `data/scorecard.csv` | One row per Buy or Sell suggestion |
 | Jev explanations | `data/jev/<DATE>.json` | One file per day |
 | Daily snapshots (from phase 2) | `data/snapshots/<DATE>/` | One folder per day |
@@ -310,7 +312,8 @@ tests/                one test file per source file, using saved sample data
 
 scripts/
 ├── daily_update.py   run the daily scoring without opening the site
-└── run_backtest.py   run the backtest and print the track record
+├── run_backtest.py   run the backtest and print the track record
+└── make_fixtures.py  create the made-up test data in tests/fixtures/
 
 requirements.txt      the libraries to install
 data/                 local storage, not committed

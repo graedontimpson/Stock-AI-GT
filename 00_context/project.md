@@ -2,23 +2,24 @@
 
 ## Goal
 
-Build a beginner-friendly Stock AI analyzer: a personal website that estimates
-the probability of stocks on a watchlist rising or falling and points out the
-most promising opportunities.
+Build a beginner-friendly paper trading website: the user trades S&P 500
+stocks with fake money at real prices, and an AI suggests whether to buy,
+sell, or hold each stock, with a reason.
 
 ## Later
 
 Built in phases; see `01_product/output.md` for the full definition.
 
 - Yahoo data and other free data sources
-- Processing
+- A paper trading account: cash, holdings, trades, and performance
 - Useful calculations and a probability model with a backtested track record
-- Jev analysis
+- Jev analysis: Buy, Sell, or Hold suggestions explained in plain English
 - A result the user can read
 
 ## Current stage
 
-Design. Workspace setup and the product definition are done.
+Design. The product, architecture, and API stages were revised on 2026-10-20
+for paper trading. The data and QA stages are next.
 
 ## Rules
 
@@ -27,3 +28,4 @@ Design. Workspace setup and the product definition are done.
 - Explain unfamiliar concepts.
 - Wait for human approval before implementing features.
 - Use free data sources only.
+- Paper trading only: the site never connects to a real brokerage or real money.

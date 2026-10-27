@@ -99,6 +99,85 @@ for code in FRED_CODES:
                 f"latest {latest.iloc[0]} = {latest.iloc[1]}; non-numeric values: {missing}")
 
 
+# Phase 2 sources
+
+def sec_headers():
+    from dotenv import dotenv_values
+    import os
+    contact = os.getenv("SEC_CONTACT") or dotenv_values(".env").get("SEC_CONTACT")
+    assert contact, "SEC_CONTACT is not set in .env"
+    return {"User-Agent": f"stock-ai {contact}"}
+
+
+@check("SEC: ticker to CIK list")
+def sec_tickers():
+    response = requests.get("https://www.sec.gov/files/company_tickers.json", headers=sec_headers(), timeout=30)
+    response.raise_for_status()
+    rows = list(response.json().values())
+    assert {"cik_str", "ticker", "title"} <= set(rows[0]), rows[0]
+    apple = [r for r in rows if r["ticker"] == "AAPL"]
+    assert apple and apple[0]["cik_str"] == 320193, apple
+    return f"{len(rows)} tickers; AAPL -> CIK {apple[0]['cik_str']}"
+
+
+@check("SEC: company facts for Apple")
+def sec_facts():
+    response = requests.get("https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+                            headers=sec_headers(), timeout=60)
+    response.raise_for_status()
+    facts = response.json()["facts"]["us-gaap"]
+    found = {}
+    for concept in ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet",
+                    "NetIncomeLoss", "EarningsPerShareDiluted", "Liabilities", "StockholdersEquity"]:
+        units = facts.get(concept, {}).get("units", {})
+        entries = next(iter(units.values()), [])
+        if entries:
+            found[concept] = (len(entries), min(e["filed"] for e in entries))
+    assert "NetIncomeLoss" in found and "EarningsPerShareDiluted" in found, found
+    entry = next(iter(facts["NetIncomeLoss"]["units"].values()))[-1]
+    assert {"end", "val", "form", "filed"} <= set(entry), entry
+    return f"{len(response.content) / 1e6:.1f} MB; concepts (entries, first filed): {found}"
+
+
+@check("Yahoo Finance: earnings dates for AAPL")
+def yahoo_earnings():
+    import yfinance as yf
+    table = yf.Ticker("AAPL").get_earnings_dates(limit=40)
+    assert len(table) >= 20, f"{len(table)} rows"
+    return f"{len(table)} rows from {table.index.min().date()}; columns {list(table.columns)}"
+
+
+@check("Yahoo Finance: snapshot data for AAPL (options, short interest, holders)")
+def yahoo_snapshot():
+    import yfinance as yf
+    ticker = yf.Ticker("AAPL")
+    expiries = ticker.options
+    assert expiries, "no option expiry dates"
+    chain = ticker.option_chain(expiries[min(3, len(expiries) - 1)])
+    needed = {"strike", "volume", "openInterest", "impliedVolatility"}
+    assert needed <= set(chain.calls.columns), list(chain.calls.columns)
+    info = ticker.info
+    short = {k: info.get(k) for k in ["sharesShort", "shortRatio", "shortPercentOfFloat", "dateShortInterest"]}
+    assert all(v is not None for v in short.values()), short
+    holders = ticker.major_holders
+    assert holders is not None and "institutionsPercentHeld" in holders.index, holders
+    return f"{len(expiries)} expiries; short {short}; institutions {holders.loc['institutionsPercentHeld'].iloc[0]:.1%}"
+
+
+@check("Google News: recent headlines for Apple")
+def google_news():
+    import xml.etree.ElementTree as ET
+    response = requests.get("https://news.google.com/rss/search",
+                            params={"q": "Apple stock when:14d", "hl": "en-US", "gl": "US", "ceid": "US:en"},
+                            timeout=30)
+    response.raise_for_status()
+    items = ET.fromstring(response.content).findall(".//item")
+    assert items, "no headlines"
+    fields = {child.tag for child in items[0]}
+    assert {"title", "link", "pubDate", "source"} <= fields, fields
+    return f"{len(items)} headlines; newest {items[0].findtext('pubDate')}; oldest {items[-1].findtext('pubDate')}"
+
+
 if "--claude" in sys.argv:
     @check("Claude: one small request")
     def claude():

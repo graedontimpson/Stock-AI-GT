@@ -39,6 +39,10 @@ def saved_today(path: Path) -> bool:
     return path.exists() and date.fromtimestamp(path.stat().st_mtime) == date.today()
 
 
+def saved_within_days(path: Path, days: int) -> bool:
+    return path.exists() and (date.today() - date.fromtimestamp(path.stat().st_mtime)).days < days
+
+
 def _write_json(path: Path, data) -> None:
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2, default=str))
@@ -97,6 +101,47 @@ def load_economy() -> pd.DataFrame | None:
 
 def save_economy(economy: pd.DataFrame) -> None:
     economy.rename_axis("date").to_csv(economy_path())
+
+
+# Company financials and earnings (phase 2)
+
+def financials_path(ticker: str) -> Path:
+    return _path("financials", f"{ticker}.csv")
+
+
+def load_financials(ticker: str) -> pd.DataFrame | None:
+    path = financials_path(ticker)
+    if not path.exists():
+        return None
+    return pd.read_csv(path, parse_dates=["period_end", "filed"])
+
+
+def save_financials(ticker: str, table: pd.DataFrame) -> None:
+    table.to_csv(financials_path(ticker), index=False, date_format="%Y-%m-%d")
+
+
+def earnings_path(ticker: str) -> Path:
+    return _path("earnings", f"{ticker}.csv")
+
+
+def load_earnings(ticker: str) -> pd.DataFrame | None:
+    path = earnings_path(ticker)
+    if not path.exists():
+        return None
+    return pd.read_csv(path, parse_dates=["announced"])
+
+
+def save_earnings(ticker: str, table: pd.DataFrame) -> None:
+    table.to_csv(earnings_path(ticker), index=False)
+
+
+def load_splits(ticker: str) -> pd.DataFrame | None:
+    path = _path("splits", f"{ticker}.csv")
+    return pd.read_csv(path, parse_dates=["date"]) if path.exists() else None
+
+
+def save_splits(ticker: str, table: pd.DataFrame) -> None:
+    table.to_csv(_path("splits", f"{ticker}.csv"), index=False, date_format="%Y-%m-%d")
 
 
 # Account

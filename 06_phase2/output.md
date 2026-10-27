@@ -96,8 +96,14 @@ context), `pages/stock.py` and `pages/scorecard.py` (new sections),
 called a CIK. The SEC's free ticker list (`company_tickers.json`) gives the
 CIK for each ticker. It is saved and refreshed weekly.
 
-**Which figures.** Each concept has a short list of labels companies use,
-tried in order, because companies do not all use the same one:
+**Which figures.** Each concept has a list of labels companies use, because
+companies do not all use the same one, and a company can switch labels over
+the years. The smoke check on 2026-10-27 found Apple's revenue under
+`SalesRevenueNet` until about 2018, then under
+`RevenueFromContractWithCustomerExcludingAssessedTax`, with a short-lived
+`Revenues` label alongside. So the labels are **combined period by period**:
+for each quarter, the value comes from the first label in the list that has
+one. Picking a single label would have lost years of history.
 
 | Concept | Labels tried, in order |
 | --- | --- |

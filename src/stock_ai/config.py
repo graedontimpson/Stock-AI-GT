@@ -14,6 +14,7 @@ class Settings:
     data_dir: Path
     anthropic_api_key: str | None
     jev_model: str = "claude-opus-5-5"
+    sec_contact: str | None = None  # email(s) sent with SEC requests, as the SEC asks
     starting_cash: float = 100_000.0
     horizon_months: int = 3
     horizon_days: int = 63  # trading days in about 3 months
@@ -21,6 +22,7 @@ class Settings:
     sell_threshold: float = 0.40
     min_edge: float = 0.02  # points a stock's track record must beat its baseline by
     top_picks: int = 10
+    company_inputs: bool = False  # phase 2 inputs; switched on only if they beat phase 1
     history_years: int = 10
     min_history_years: int = 1
     market_ticker: str = "SPY"
@@ -52,4 +54,5 @@ def load_settings() -> Settings:
         data_dir=data_dir,
         anthropic_api_key=value("ANTHROPIC_API_KEY"),
         jev_model=value("JEV_MODEL") or Settings.jev_model,
+        sec_contact=value("SEC_CONTACT"),
     )

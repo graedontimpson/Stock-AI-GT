@@ -20,8 +20,11 @@ def _say(progress, message: str) -> None:
         progress(message)
 
 
-def build_tables(tickers: list[str], market: pd.DataFrame, economy: pd.DataFrame, horizon: int):
-    """Signals with outcomes for every ticker, and the reasons any were skipped."""
+def build_tables(tickers: list[str], market: pd.DataFrame, economy: pd.DataFrame, horizon: int,
+                 company: bool = False):
+    """Signals with outcomes for every ticker, and the reasons any were skipped.
+
+    With company=True, the phase 2 company inputs are added and their gaps filled."""
     context = signals.build_context(market, economy)
     tables, skipped = [], {}
     for ticker in tickers:
@@ -34,10 +37,17 @@ def build_tables(tickers: list[str], market: pd.DataFrame, economy: pd.DataFrame
         except NotEnoughHistoryError:
             skipped[ticker] = "under 1 year of prices"
             continue
+        if company:
+            extra = signals.company_signals(history, storage.load_financials(ticker),
+                                            storage.load_earnings(ticker), storage.load_splits(ticker))
+            table = table.join(extra)
         tables.append(signals.add_outcomes(table, history, horizon))
     if not tables:
         raise DataUnavailableError()
-    return pd.concat(tables), skipped
+    combined = pd.concat(tables)
+    if company:
+        combined = signals.fill_company_gaps(combined)
+    return combined, skipped
 
 
 def _backtest_due() -> bool:
@@ -70,7 +80,9 @@ def run_daily(refresh: bool = False, progress=None) -> DailyResults:
     economy = economy_data.get_economy()
 
     _say(progress, "Calculating signals")
-    table, skipped = build_tables(tickers, market, economy, settings.horizon_days)
+    features = signals.ALL_FEATURES if settings.company_inputs else signals.FEATURES
+    table, skipped = build_tables(tickers, market, economy, settings.horizon_days,
+                                  company=settings.company_inputs)
     for ticker, reason in report.failed.items():
         if ticker != settings.market_ticker:
             skipped.setdefault(ticker, reason)
@@ -78,13 +90,13 @@ def run_daily(refresh: bool = False, progress=None) -> DailyResults:
     if _backtest_due():
         _say(progress, "Running the weekly backtest (this takes a few minutes)")
         try:
-            storage.save_backtest(backtest.run_backtest(table, settings.horizon_days))
+            storage.save_backtest(backtest.run_backtest(table, settings.horizon_days, features=features))
         except NotEnoughHistoryError:
             pass  # without a backtest, no stock can beat its baseline, so all are Hold
     backtest_result = storage.latest_backtest()
 
     _say(progress, "Training the model")
-    trained = model.train(table)
+    trained = model.train(table, features)
 
     _say(progress, "Scoring every stock")
     latest_day = table.index.max()

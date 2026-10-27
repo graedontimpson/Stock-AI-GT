@@ -60,9 +60,9 @@ def test_no_test_row_is_ever_in_its_own_training_data(planted, monkeypatch):
     seen = []
     real_train = model.train
 
-    def recording_train(rows):
+    def recording_train(rows, features=None):
         seen.append(rows.index.max())
-        return real_train(rows)
+        return real_train(rows, features)
     monkeypatch.setattr(model, "train", recording_train)
     backtest.run_backtest(planted, horizon=63)
     steps = backtest.periods(planted.dropna(subset=["rose"]).index, 63)

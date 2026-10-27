@@ -38,7 +38,8 @@ def periods(dates: pd.DatetimeIndex, horizon: int, first_years: int = FIRST_TRAI
     return steps
 
 
-def run_backtest(training_table: pd.DataFrame, horizon: int = 63, gap: bool = True) -> BacktestResult:
+def run_backtest(training_table: pd.DataFrame, horizon: int = 63, gap: bool = True,
+                 features: list | None = None) -> BacktestResult:
     """`training_table` has a date index, a ticker column, the signals, and `rose`.
 
     `gap=False` exists only for the QA check that proves the gap matters.
@@ -59,7 +60,7 @@ def run_backtest(training_table: pd.DataFrame, horizon: int = 63, gap: bool = Tr
         if test_rows.empty:
             continue
         try:
-            trained = model.train(train_rows)
+            trained = model.train(train_rows, features)
         except NotEnoughHistoryError:
             continue
         probabilities = model.predict_many(trained, test_rows)

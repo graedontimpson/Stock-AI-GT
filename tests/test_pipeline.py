@@ -90,3 +90,19 @@ def test_failed_explanation_is_not_saved(services, monkeypatch):
     pipeline.get_explanation("AAA")
     pipeline.get_explanation("AAA")
     assert len(calls) == 2  # tried again, since nothing useful was saved
+
+
+def test_build_tables_with_company_inputs(services, monkeypatch):
+    from stock_ai import signals
+    from stock_ai.data import financials as financial_data
+    from tests.test_company_data import fake_facts
+    pipeline.run_daily()  # saves the prices
+    storage.save_financials("AAA", financial_data.extract(fake_facts()))
+    market = storage.load_prices("SPY")
+    table, skipped = pipeline.build_tables(["AAA", "BBB"], market, economy.get_economy(), 63, company=True)
+    assert set(signals.ALL_FEATURES) <= set(table.columns)
+    assert not table[signals.ALL_FEATURES].isna().any().any()
+    bbb = table[table["ticker"] == "BBB"]
+    assert (bbb["financials_missing"] == 1).all()  # BBB has no company data at all
+    aaa_2020 = table[(table["ticker"] == "AAA") & (table.index.year == 2020)]
+    assert (aaa_2020["revenue_growth"] != aaa_2020["revenue_growth"].iloc[0]).any()

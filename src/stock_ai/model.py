@@ -31,15 +31,16 @@ def _sigmoid(x: float) -> float:
     return 1 / (1 + math.exp(-x))
 
 
-def train(training_table: pd.DataFrame) -> TrainedModel:
+def train(training_table: pd.DataFrame, features: list | None = None) -> TrainedModel:
+    features = list(features or FEATURES)
     rows = training_table.dropna(subset=["rose"])
     if len(rows) < MIN_TRAINING_ROWS or rows["rose"].nunique() < 2:
         raise NotEnoughHistoryError()
     # Standardizing is worked out from these training rows only.
-    scaler = StandardScaler().fit(rows[FEATURES].to_numpy())
+    scaler = StandardScaler().fit(rows[features].to_numpy())
     classifier = LogisticRegression(max_iter=1000)
-    classifier.fit(scaler.transform(rows[FEATURES].to_numpy()), rows["rose"].astype(int).to_numpy())
-    return TrainedModel(scaler=scaler, classifier=classifier, features=list(FEATURES))
+    classifier.fit(scaler.transform(rows[features].to_numpy()), rows["rose"].astype(int).to_numpy())
+    return TrainedModel(scaler=scaler, classifier=classifier, features=features)
 
 
 def predict_many(model: TrainedModel, rows: pd.DataFrame) -> np.ndarray:

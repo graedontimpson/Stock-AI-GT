@@ -18,9 +18,8 @@ Built in phases; see `01_product/output.md` for the full definition.
 
 ## Current stage
 
-Design. The product, architecture, and API stages were revised on 2026-10-20
-for paper trading. The data and QA stages are done, so planning is
-complete. Building phase 1 is next, once the team approves it.
+Phase 1 is built and approved by the team (2026-10-27); one manual check (the
+next-day update) remains. Phase 2 is being planned in `06_phase2/`.
 
 ## Rules
 

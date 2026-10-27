@@ -167,8 +167,13 @@ These catch the mistakes that make a stock model look good when it is not.
   random. The model's track record must come out close to the baseline
   (within 2 points). If it is clearly better, the backtest is leaking
   information.
-- **Gap test**: remove the 63-day gap and confirm the random data test now
-  scores higher. This proves the gap is doing its job.
+- **Gap test**: check that every training period ends 63 trading days
+  before its test period starts, and that no training row is dated inside
+  the gap. Changed on 2026-10-20: the original plan was to remove the gap
+  and show the random data test then scores higher. Tried on three sets of
+  random data, the score went up twice and down once, because the leak is
+  too small for this simple model to show reliably. A test that passes or
+  fails by chance proves nothing, so the gap is checked directly instead.
 
 ### Sensible behavior
 

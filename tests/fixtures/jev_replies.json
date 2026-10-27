@@ -1,0 +1,16 @@
+{
+  "good": {
+    "why": "The model gives this stock a 66% chance of rising.",
+    "stands_out": "The price is well above its 200-day average.",
+    "could_be_wrong": "The track record is only a little above the baseline."
+  },
+  "missing_field": {
+    "why": "Only one field."
+  },
+  "extra_field": {
+    "why": "a",
+    "stands_out": "b",
+    "could_be_wrong": "c",
+    "advice": "buy now"
+  }
+}

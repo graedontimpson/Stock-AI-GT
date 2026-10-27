@@ -3,9 +3,9 @@
 Exactly what data phase 1 of the Stock AI Analyzer collects, how it is cleaned
 and stored, and how it becomes the model's inputs.
 
-Some details of the outside services (web addresses, column names, and limits)
-come from general knowledge and have not been tested yet. They are checked
-when building starts, and this document is corrected if anything differs.
+The outside services were checked with `scripts/smoke_check.py` on
+2026-10-20. Findings that differ from the original plan are marked
+"Checked 2026-10-20" below.
 
 ## 1. Datasets
 
@@ -17,7 +17,7 @@ when building starts, and this document is corrected if anything differs.
 | Requested | The whole table, using `pandas` to read it from the page |
 | Kept | Ticker, company name, sector |
 | Updated | At most once a day, during the daily update |
-| Size | About 503 rows; a few companies have two kinds of shares, each with its own ticker |
+| Size | About 503 rows; a few companies have two kinds of shares, each with its own ticker. Checked 2026-10-20: 503 rows, with `BRK.B` and `BF.B` using a dot |
 
 Tickers are converted to Yahoo's form when saved: a dot becomes a dash, so
 `BRK.B` becomes `BRK-B`.
@@ -70,6 +70,7 @@ batches, to avoid being refused for sending too many requests.
 | Requested | The full history of four series |
 | Updated | Daily update |
 | Size | A few thousand rows each; under 1 MB in total |
+| Checked 2026-10-20 | FRED refuses requests with a custom User-Agent header, so none is sent. The date column is named `observation_date`. Missing values arrive as blanks. CPI and unemployment each have one unpublished month (October 2025). The daily interest rate is usually 2 to 3 business days behind. |
 
 | Code | What it is | How often FRED publishes it |
 | --- | --- | --- |

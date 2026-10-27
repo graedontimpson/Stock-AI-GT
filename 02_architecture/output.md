@@ -287,12 +287,16 @@ inspected directly and need no setup.
 
 ```
 src/stock_ai/
-├── app.py            the website: home page
+├── app.py            the website: page list and navigation
+├── ui.py             pieces shared by the pages
 ├── pages/
+│   ├── home.py       account summary, holdings, top picks, search
 │   ├── stock.py      one stock: chart, suggestion, Jev, trade box
 │   ├── portfolio.py  holdings, trade history, performance
 │   └── scorecard.py  how past suggestions turned out
 ├── config.py         settings and loading of .env
+├── errors.py         the named errors and their messages
+├── shapes.py         the shared data shapes from the API stage
 ├── storage.py        reading and writing the data/ folder
 ├── data/
 │   ├── universe.py   the S&P 500 list
@@ -313,7 +317,8 @@ tests/                one test file per source file, using saved sample data
 scripts/
 ├── daily_update.py   run the daily scoring without opening the site
 ├── run_backtest.py   run the backtest and print the track record
-└── make_fixtures.py  create the made-up test data in tests/fixtures/
+├── make_fixtures.py  create the made-up test data in tests/fixtures/
+└── smoke_check.py    check the outside services still answer as expected
 
 requirements.txt      the libraries to install
 data/                 local storage, not committed

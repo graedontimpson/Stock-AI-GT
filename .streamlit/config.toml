@@ -1,0 +1,21 @@
+# Look and feel of the website. Streamlit reads this file when the site is
+# started from the project folder.
+
+[theme]
+base = "dark"
+primaryColor = "#0ca30c"
+backgroundColor = "#0d0d0d"
+secondaryBackgroundColor = "#1a1a19"
+textColor = "#f0efec"
+borderColor = "#2c2c2a"
+font = "sans-serif"
+baseRadius = "medium"
+greenColor = "#0ca30c"
+redColor = "#e66767"
+chartCategoricalColors = ["#3987e5", "#898781", "#199e70", "#c98500"]
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

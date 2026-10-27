@@ -5,11 +5,11 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
-from stock_ai import account, backtest, jev, model, scorecard, signals, storage, suggestions
+from stock_ai import account, autotrader, backtest, jev, model, scorecard, signals, storage, suggestions
 from stock_ai.config import load_settings
 from stock_ai.data import economy as economy_data
 from stock_ai.data import prices, universe
-from stock_ai.errors import DataUnavailableError, NotEnoughHistoryError, NotInSP500Error
+from stock_ai.errors import DataUnavailableError, NotEnoughHistoryError, NotInSP500Error, StockAIError
 from stock_ai.shapes import DailyResults, JevExplanation, Suggestion
 
 BACKTEST_EVERY_DAYS = 7
@@ -140,6 +140,12 @@ def run_daily(refresh: bool = False, progress=None) -> DailyResults:
     scorecard.mark_due()
     if storage.load_account() is not None:
         account.apply_splits()
+
+    _say(progress, "Letting the AI trader place today's trades")
+    try:
+        _say(progress, autotrader.describe(autotrader.run(results)))
+    except StockAIError as error:
+        _say(progress, f"The AI trader didn't trade today: {error.message}")
     return results
 
 

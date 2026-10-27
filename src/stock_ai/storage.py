@@ -144,19 +144,22 @@ def save_splits(ticker: str, table: pd.DataFrame) -> None:
     table.to_csv(_path("splits", f"{ticker}.csv"), index=False, date_format="%Y-%m-%d")
 
 
-# Account
+# Accounts. "you" is the user's account; "ai" is the one the AI trader runs.
 
-def load_account() -> Account | None:
-    data = _read_json(_path("account", "account.json"))
+ACCOUNT_FOLDERS = {"you": "account", "ai": "ai_account"}
+
+
+def load_account(owner: str = "you") -> Account | None:
+    data = _read_json(_path(ACCOUNT_FOLDERS[owner], "account.json"))
     return from_dict(Account, data) if data else None
 
 
-def save_account(account: Account) -> None:
-    _write_json(_path("account", "account.json"), to_dict(account))
+def save_account(account: Account, owner: str = "you") -> None:
+    _write_json(_path(ACCOUNT_FOLDERS[owner], "account.json"), to_dict(account))
 
 
-def load_trades() -> list[Trade]:
-    path = _path("account", "trades.csv")
+def load_trades(owner: str = "you") -> list[Trade]:
+    path = _path(ACCOUNT_FOLDERS[owner], "trades.csv")
     if not path.exists():
         return []
     table = pd.read_csv(path, dtype={"suggestion_at_time": str, "price_as_of": str}, keep_default_na=False)
@@ -169,16 +172,16 @@ def load_trades() -> list[Trade]:
     return trades
 
 
-def append_trade(trade: Trade) -> None:
+def append_trade(trade: Trade, owner: str = "you") -> None:
     """Add one row to the end of the trade list. Earlier rows are never rewritten."""
-    path = _path("account", "trades.csv")
+    path = _path(ACCOUNT_FOLDERS[owner], "trades.csv")
     row = pd.DataFrame([to_dict(trade)], columns=TRADE_COLUMNS)
     row.to_csv(path, mode="a", header=not path.exists(), index=False)
 
 
-def archive_account() -> None:
-    """Copy the account files into account/archive/<time>/ before a reset, then remove them."""
-    account_dir = data_dir() / "account"
+def archive_account(owner: str = "you") -> None:
+    """Copy the account files into <account folder>/archive/<time>/ before a reset, then remove them."""
+    account_dir = data_dir() / ACCOUNT_FOLDERS[owner]
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     archive = account_dir / "archive" / stamp
     archive.mkdir(parents=True, exist_ok=True)
@@ -187,6 +190,16 @@ def archive_account() -> None:
         if source.exists():
             shutil.copy2(source, archive / name)
             source.unlink()
+
+
+def load_ai_last_run() -> str | None:
+    """The day the AI trader last ran, so it trades at most once a day."""
+    data = _read_json(_path(ACCOUNT_FOLDERS["ai"], "last_run.json"))
+    return data["day"] if data else None
+
+
+def save_ai_last_run(day: str) -> None:
+    _write_json(_path(ACCOUNT_FOLDERS["ai"], "last_run.json"), {"day": day})
 
 
 # Daily results, backtest, and Jev

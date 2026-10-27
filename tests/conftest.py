@@ -26,6 +26,8 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "dotenv_values", lambda *args, **kwargs: {})
     monkeypatch.setattr(prices, "BATCH_PAUSE_SECONDS", 0)
     monkeypatch.setattr(prices, "RETRY_PAUSE_SECONDS", 0)
+    # No real latest prices: anything that asks for one without a stand-in gets "unavailable".
+    monkeypatch.setattr(prices, "_fetch_quote", lambda ticker: None)
     yield tmp_path / "data"
 
 

@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 
+import pandas as pd
 import pytest
 
 from stock_ai import account, storage
@@ -13,7 +14,7 @@ from stock_ai.errors import (
     NotInSP500Error,
     PriceUnavailableError,
 )
-from stock_ai.shapes import DailyResults, Split, Suggestion
+from stock_ai.shapes import Account, DailyResults, Split, Suggestion, Trade
 
 
 def check_rules():
@@ -202,3 +203,53 @@ def test_portfolio_falls_back_to_saved_close(opened, prices_saved):
     holding = account.get_portfolio().holdings[0]
     assert holding.price_is_fallback
     assert holding.current_price == pytest.approx(storage.load_prices("AAA")["close"].iloc[-1])
+
+
+def saved_closes(ticker, closes):
+    days = pd.DatetimeIndex(pd.to_datetime(list(closes)), name="date")
+    values = list(closes.values())
+    storage.save_prices(ticker, pd.DataFrame({
+        "open": values, "high": values, "low": values, "close": values, "adj_close": values,
+        "volume": 1_000_000.0, "filled": False,
+    }, index=days))
+
+
+def saved_trade(number, time, ticker, kind, shares, price, price_as_of=""):
+    storage.append_trade(Trade(number, time, ticker, kind, shares, price, price_as_of or time, ""))
+
+
+def test_value_history_counts_shares_in_todays_units_across_a_split(isolated):
+    storage.save_account(Account("2024-01-02T10:00:00-05:00", 10_000.0, 100.0, 100.0))
+    saved_closes("SPY", {"2024-01-01": 99, "2024-01-02": 100, "2024-01-03": 101, "2024-01-04": 102, "2024-01-05": 103})
+    # Closes are adjusted for the 2-for-1 split on 2024-01-04, so the $100 bought on 01-02 shows as 50.
+    saved_closes("AAA", {"2024-01-02": 50, "2024-01-03": 52, "2024-01-04": 54, "2024-01-05": 55})
+    saved_trade(1, "2024-01-02T11:00:00-05:00", "AAA", "buy", 10, 100.0)
+    # The split is noticed by the daily update a day after it happens.
+    saved_trade(2, "2024-01-05T09:00:00-05:00", "AAA", "split", 10, None, "2024-01-04T00:00:00-05:00")
+
+    rows = account.get_value_history()
+
+    assert [(str(r["time"])[:10], r["account"], r["benchmark"]) for r in rows] == [
+        ("2024-01-02", 10_000, 10_000),  # opening
+        ("2024-01-02", 10_000, 10_000),  # 9,000 cash + 20 shares in today's units at 50
+        ("2024-01-03", 10_040, 10_100),
+        ("2024-01-04", 10_080, 10_200),  # split day, before the daily update records it
+        ("2024-01-05", 10_100, 10_300),
+    ]
+
+
+def test_value_history_after_a_sell(isolated):
+    storage.save_account(Account("2024-01-02T10:00:00-05:00", 10_000.0, 100.0, 100.0))
+    saved_closes("SPY", {"2024-01-02": 100, "2024-01-03": 100})
+    saved_closes("AAA", {"2024-01-02": 100, "2024-01-03": 110})
+    saved_trade(1, "2024-01-02T11:00:00-05:00", "AAA", "buy", 10, 100.0)
+    saved_trade(2, "2024-01-03T11:00:00-05:00", "AAA", "sell", 4, 105.0)
+
+    rows = account.get_value_history()
+
+    assert [r["account"] for r in rows] == [10_000, 10_000, 9_000 + 420 + 6 * 110]
+
+
+def test_value_history_without_saved_prices_is_just_the_opening(isolated):
+    storage.save_account(Account("2024-01-02T10:00:00-05:00", 10_000.0, 100.0, 100.0))
+    assert [r["account"] for r in account.get_value_history()] == [10_000]

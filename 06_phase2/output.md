@@ -82,7 +82,8 @@ src/stock_ai/data/
 └── snapshots.py    daily options, short interest, and holdings
 
 scripts/
-└── snapshot.py     run the daily snapshot without opening the site
+├── snapshot.py     run the daily snapshot without opening the site
+└── schedule.py     install or remove the automatic weekday run
 ```
 
 Changed: `signals.py` (new inputs), `pipeline.py` (new steps), `jev.py` (more
@@ -181,6 +182,32 @@ saves as it goes, so a stopped run continues where it left off.
 **Not in the model yet.** These have no history, so they are only saved.
 Phase 3 shows them and tests whether they help.
 
+### Automatic weekday run
+
+- A macOS **launch agent** (a small settings file that tells the Mac to run a
+  program on a schedule) runs `scripts/daily_update.py` and then
+  `scripts/snapshot.py` every weekday at **5:00 AM Arizona time** (7 AM New
+  York in winter, 8 AM in summer).
+- Morning rather than evening, because the update only saves a day's prices
+  once they are final: a morning run includes the previous day's close, so
+  suggestions are fresh before the market opens.
+- If the Mac is asleep at 5:00 AM, the run happens when it wakes. If it is
+  off, that day is missed.
+- Output goes to `data/logs/<DATE>.log`.
+- `scripts/schedule.py install` sets it up and `scripts/schedule.py remove`
+  takes it away. It only touches the one file it creates in
+  `~/Library/LaunchAgents/`.
+- Opening the site still runs the update if the automatic run has not
+  happened yet that day.
+
+### SEC contact
+
+- The contact emails go in `.env` as `SEC_CONTACT`, not in the code, because
+  the repository is public and email addresses in it can be collected by
+  spammers. `.env.example` lists the variable with no value.
+- Every SEC request sends a header in the form the SEC asks for:
+  `stock-ai <emails>`.
+
 ## 5. Measuring whether it helps
 
 - The weekly backtest runs twice on the same dates: once with the phase 1
@@ -239,26 +266,23 @@ Manual:
 
 ## 8. Build order
 
-1. Smoke check for SEC, Google News, and the Yahoo snapshot data.
+1. Smoke check for SEC, Google News, and the Yahoo snapshot data, and the
+   automatic weekday run (daily update only, at first).
 2. SEC financials: download, extract, save, coverage report.
 3. Earnings surprises.
 4. New signals and the two-model backtest comparison. **Stop here and review
    the result with the team before going further.**
 5. News headlines and the Jev update.
 6. Stock page and scorecard sections.
-7. Daily snapshots.
+7. Daily snapshots, added to the automatic run.
 
-## 9. Open questions
+## 9. Decisions
 
-1. **SEC contact email**: the SEC asks automated requests to include a
-   contact email in the request header. Which email should be used? It is
-   sent with every SEC request.
-2. **Running daily automatically**: phase 1 decided the daily update is run
-   by hand. Snapshots only build a useful history if they run every trading
-   day. Should the update and snapshot run automatically on this Mac each
-   weekday evening (about 6 PM New York time)? The Mac would need to be on.
-3. **Snapshot size**: all 500 stocks takes about 25 minutes a day. Is that
-   acceptable, or should snapshots cover fewer stocks (for example, stocks
-   owned plus the 100 largest)?
-4. **Where this plan lives**: this plan is in a new `06_phase2/` folder rather
-   than spread across the five stage folders. Acceptable?
+| Question | Decision | Date |
+| --- | --- | --- |
+| SEC contact email | Both team members' emails, kept in `.env` as `SEC_CONTACT` | 2026-10-27 |
+| Running daily automatically | Yes: weekdays at 5:00 AM Arizona time, via a macOS launch agent. Replaces the phase 1 decision to run by hand. Moved from the 6 PM New York time first proposed, for the reason in section 4 | 2026-10-27 |
+| Snapshot size | All S&P 500 stocks, about 25 minutes a day | 2026-10-27 |
+| Where this plan lives | `06_phase2/` | 2026-10-27 |
+
+No open questions remain.

@@ -1,5 +1,6 @@
-# Local data (prices, account, results)
-data/
+# Local data (prices, account, results). The leading slash keeps it to the
+# top-level folder, so src/stock_ai/data/ (code) is still committed.
+/data/
 
 # Secrets
 .env

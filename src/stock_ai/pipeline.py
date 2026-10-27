@@ -107,6 +107,10 @@ def run_daily(refresh: bool = False, progress=None) -> DailyResults:
             volatility_cutoffs=cutoffs,
         ))
     scored.sort(key=lambda s: s.probability_up, reverse=True)
+    # A stock whose download failed may still be scored from its saved prices; only
+    # stocks that got no suggestion at all count as skipped.
+    scored_tickers = {s.ticker for s in scored}
+    skipped = {t: reason for t, reason in skipped.items() if t not in scored_tickers}
     top_buys, top_sells = suggestions.top_picks(scored, settings.top_picks)
 
     results = DailyResults(

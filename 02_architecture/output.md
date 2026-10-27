@@ -166,7 +166,13 @@ scores above 50%. The track record is therefore shown next to that
 | --- | --- |
 | Buy | Probability of rising 60% or more |
 | Sell | Probability of rising 40% or less |
-| Hold | Anything in between, or the model did not beat the baseline for this stock |
+| Hold | Anything in between, or the model has not earned a Buy or Sell (below) |
+
+A stock can only get Buy or Sell if the model beats the baseline **overall** in the
+backtest, and beats this stock's own baseline by at least 2 points. Otherwise it
+is Hold. Tightened on 2026-10-27, after the first real backtest: the model did not
+beat the baseline overall (57.7% against 58.9%), and about half the stocks beat
+their own baseline, which is what chance alone would produce.
 
 **Confidence** is low, medium, or high, based on how far the probability is
 from 50% and how far the track record is above the baseline. Top picks are the

@@ -56,7 +56,13 @@ else:
                  f"{ui.percent(suggestion.track_record)} of the time for {ticker}. "
                  f"Always guessing \"rise\" would have been right {ui.percent(suggestion.baseline)} of the time.")
     if not suggestion.beats_baseline:
-        st.caption("The method has not beaten that baseline for this stock, so the suggestion is Hold.")
+        overall = results.backtest if results else None
+        if overall is not None and overall.overall_track_record <= overall.overall_baseline:
+            st.caption("Overall, the method has not beaten always guessing \"rise\", "
+                       "so every suggestion is Hold until it does.")
+        else:
+            st.caption("The method has not beaten that baseline by at least 2 points for this stock, "
+                       "so the suggestion is Hold.")
 
     with st.expander("What pushed the chance up or down"):
         table = pd.DataFrame([{

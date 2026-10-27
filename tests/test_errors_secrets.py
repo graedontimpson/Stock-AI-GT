@@ -54,3 +54,13 @@ def test_env_is_ignored_and_example_has_no_values():
 
 def test_data_folder_is_ignored():
     assert subprocess.run(["git", "check-ignore", "-q", "data/x.csv"], cwd=ROOT).returncode == 0
+
+
+def test_no_code_or_test_file_is_ignored():
+    # An ignore rule once hid src/stock_ai/data/ from git, so GitHub never received it.
+    files = [str(p.relative_to(ROOT)) for folder in ("src", "tests", "scripts")
+             for p in (ROOT / folder).rglob("*")
+             if p.is_file() and "__pycache__" not in p.parts and ".egg-info" not in str(p)]
+    ignored = subprocess.run(["git", "check-ignore", "--stdin"], cwd=ROOT, input="\n".join(files),
+                             capture_output=True, text=True).stdout.split()
+    assert ignored == []

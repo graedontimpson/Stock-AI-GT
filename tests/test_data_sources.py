@@ -144,6 +144,47 @@ def test_update_history_redownloads_when_yahoo_changed_the_past(monkeypatch, fro
     assert storage.load_prices("AAA")["adj_close"].iloc[0] == pytest.approx(changed["adj_close"].iloc[0])
 
 
+def test_empty_answers_are_tried_again(monkeypatch, frozen_today):
+    calls = []
+
+    def busy_then_fine(tickers, period):
+        calls.append(tuple(tickers))
+        if len(calls) == 1:
+            return {"SPY": raw_prices("SPY")}  # Yahoo too busy to return AAA the first time
+        return {t: raw_prices(t) for t in tickers}
+    monkeypatch.setattr(prices, "_download", busy_then_fine)
+    report = prices.update_history(["AAA"])
+    assert calls[1] == ("AAA",)
+    assert "AAA" in report.updated and report.failed == {}
+
+
+def test_failed_market_update_leaves_other_saved_prices_alone(monkeypatch, frozen_today):
+    # The bug found on 2026-10-27: SPY's update failed, and its stale dates then cut
+    # every other stock's new prices off.
+    full = {t: raw_prices(t) for t in ["SPY", "AAA"]}
+    for ticker, table in full.items():
+        storage.save_prices(ticker, prices.clean(table.iloc[:-5], None))
+    before = storage.load_prices("AAA")
+
+    def spy_changed_then_empty(tickers, period):
+        if period.endswith("y"):
+            return {}  # the full SPY re-download comes back empty
+        changed = full["SPY"].copy()
+        changed["close"] *= 1.01  # forces a full re-download of SPY
+        return {"SPY": changed, "AAA": full["AAA"]}
+    monkeypatch.setattr(prices, "_download", spy_changed_then_empty)
+    report = prices.update_history(["AAA"])
+    assert report.failed["AAA"] == "market data unavailable"
+    pd.testing.assert_frame_equal(storage.load_prices("AAA"), before)
+
+
+def test_todays_row_is_never_saved():
+    days = pd.DatetimeIndex(["2026-10-23", "2026-10-26", "2026-10-27"])
+    table = pd.DataFrame({"close": [1.0, 2.0, 3.0]}, index=days)
+    late_evening = datetime(2026, 10, 27, 23, 0, tzinfo=prices.NEW_YORK)
+    assert list(prices._complete_days(table, late_evening).index) == list(days[:2])
+
+
 def test_failed_batch_is_retried_once(monkeypatch, frozen_today):
     attempts = []
 

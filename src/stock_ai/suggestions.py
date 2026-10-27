@@ -37,7 +37,12 @@ def make_suggestion(ticker: str, company_name: str, as_of: str, probability: flo
     stock = (backtest.per_stock.get(ticker) if backtest else None) or {}
     track_record = stock.get("track_record")
     baseline = stock.get("baseline")
-    beats = track_record is not None and baseline is not None and track_record > baseline
+    # Buy or Sell needs two things: the model beats always guessing "rise" overall,
+    # and it beats it for this stock by at least min_edge. Otherwise it is Hold.
+    overall_beats = backtest is not None and backtest.overall_track_record > backtest.overall_baseline
+    stock_beats = (track_record is not None and baseline is not None
+                   and track_record - baseline + EPSILON >= settings.min_edge)
+    beats = overall_beats and stock_beats
 
     if not beats:
         action = "hold"

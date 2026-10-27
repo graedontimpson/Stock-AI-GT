@@ -98,8 +98,9 @@ Using fixture data in place of downloads:
 ### `suggestions.py`
 
 - 0.60 gives Buy, 0.59 gives Hold, 0.40 gives Sell, 0.41 gives Hold.
-- A stock that does not beat its baseline is always Hold, whatever its
-  probability.
+- A stock that does not beat its baseline by at least 2 points is always
+  Hold, whatever its probability.
+- When the model does not beat the baseline overall, every stock is Hold.
 - Each confidence level matches the rule in the API stage at its edges.
 - Risk is low, medium, or high by volatility third.
 - `top_picks` returns at most 10 of each, in the right order, and empty

@@ -29,6 +29,22 @@ def test_not_beating_baseline_is_always_hold(probability):
     assert result.beats_baseline is False
 
 
+def test_overall_model_not_beating_baseline_is_always_hold():
+    # The stock itself beats its baseline by 10 points, but the model overall does not.
+    backtest = BacktestResult(0.57, 0.59, 1000,
+                              {"AAA": {"track_record": 0.65, "baseline": 0.55, "forecasts": 1000}},
+                              "2020-01-01", "2024-01-01")
+    for probability in [0.9, 0.1]:
+        result = suggestions.make_suggestion("AAA", "Alpha", "2024-01-02", probability, [], backtest, 0.2, (0.2, 0.3))
+        assert result.action == "hold"
+        assert result.beats_baseline is False
+
+
+@pytest.mark.parametrize("track_record, action", [(0.56, "hold"), (0.5699, "hold"), (0.57, "buy"), (0.60, "buy")])
+def test_stock_must_beat_its_baseline_by_two_points(track_record, action):
+    assert suggest(0.7, track_record=track_record, baseline=0.55).action == action
+
+
 def test_stock_missing_from_backtest_is_hold():
     result = suggestions.make_suggestion("ZZZ", "Z", "2024-01-02", 0.9, [], backtest_for(0.7, 0.5), 0.2, (0.2, 0.3))
     assert result.action == "hold"

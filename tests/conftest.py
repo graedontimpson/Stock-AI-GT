@@ -25,6 +25,7 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.delenv("JEV_MODEL", raising=False)
     monkeypatch.setattr(config, "dotenv_values", lambda *args, **kwargs: {})
     monkeypatch.setattr(prices, "BATCH_PAUSE_SECONDS", 0)
+    monkeypatch.setattr(prices, "RETRY_PAUSE_SECONDS", 0)
     yield tmp_path / "data"
 
 

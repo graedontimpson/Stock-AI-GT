@@ -222,7 +222,7 @@ A table with one row per stock per trading day. These are the model's inputs.
 | `confidence` | `low`, `medium`, or `high` (rule below) |
 | `risk` | `low`, `medium`, or `high`: whether the stock's volatility is in the bottom, middle, or top third of the S&P 500 |
 | `track_record`, `baseline` | From the backtest, for this stock |
-| `beats_baseline` | Yes or no; if no, `action` is always `hold` |
+| `beats_baseline` | Yes only if the model beats the baseline overall and beats this stock's baseline by at least 2 points (`MIN_EDGE`); if no, `action` is always `hold` |
 | `contributions` | List of `Contribution`, largest effect first |
 
 Confidence rule (starting values):
@@ -448,6 +448,7 @@ In `config.py`, changeable without touching other code:
 | `HORIZON_MONTHS` | 3 | How far ahead suggestions look |
 | `BUY_THRESHOLD` | 0.60 | Probability at or above which a stock is a Buy |
 | `SELL_THRESHOLD` | 0.40 | Probability at or below which a stock is a Sell |
+| `MIN_EDGE` | 0.02 | Points a stock's track record must beat its baseline by before it can be a Buy or Sell |
 | `TOP_PICKS` | 10 | How many top Buys and Sells to show |
 | `HISTORY_YEARS` | 10 | How much price history to download |
 | `MIN_HISTORY_YEARS` | 1 | Shortest history a stock needs for a suggestion |
@@ -463,5 +464,6 @@ In `config.py`, changeable without touching other code:
 | Training companies | Every stock currently in the S&P 500 | 2026-10-20 |
 | Economic data revisions | Accepted as a known limit | 2026-10-20 |
 | Price for trades | Latest Yahoo price only; never an old price | 2026-10-20 |
+| When Buy or Sell is allowed | Only if the model beats the baseline overall and the stock's own baseline by 2 points | 2026-10-27 |
 
 No open questions remain.

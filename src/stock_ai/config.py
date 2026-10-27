@@ -19,6 +19,7 @@ class Settings:
     horizon_days: int = 63  # trading days in about 3 months
     buy_threshold: float = 0.60
     sell_threshold: float = 0.40
+    min_edge: float = 0.02  # points a stock's track record must beat its baseline by
     top_picks: int = 10
     history_years: int = 10
     min_history_years: int = 1

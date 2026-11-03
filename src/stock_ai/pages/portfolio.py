@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-from stock_ai import account, ui
+from stock_ai import account, storage, ui
 from stock_ai.errors import StockAIError
 
 ui.page("Portfolio")
@@ -15,9 +15,12 @@ except StockAIError as error:
     st.stop()
 
 invested = portfolio.total_value - portfolio.cash
-cols = st.columns(4)
+today_amount, today_percent = ui.today_change("you", performance)
+cols = st.columns(5)
 cols[0].metric("Account value", ui.money(portfolio.total_value),
                f"{performance.account_gain_percent:+.2f}% since opening", border=True)
+cols[4].metric("Today", f"{'+' if today_amount >= 0 else '−'}{ui.money(abs(today_amount))}",
+               f"{today_percent:+.2f}%", border=True)
 cols[1].metric("Same money in the S&P 500", ui.money(performance.benchmark_value),
                f"{performance.benchmark_gain_percent:+.2f}%", border=True)
 cols[2].metric("You vs the market", f"{performance.ahead_by:+.2f} points",
@@ -28,6 +31,37 @@ cols[3].metric("Buying power", ui.money(portfolio.cash),
                delta_color="off", delta_arrow="off", border=True)
 st.caption(f"Account opened {performance.since[:10]}. The S&P 500 comparison shows what the starting "
            f"{ui.money(acct.starting_cash)} would be worth in SPY, a fund that tracks the S&P 500.")
+
+performance_box, allocation_box = st.columns([3, 2], gap="large")
+with performance_box:
+    title, picker = st.columns([2, 3], vertical_alignment="bottom")
+    title.subheader("Performance")
+    with picker:
+        choice = ui.range_picker("portfolio-range", options=("1W", "1M", "3M", "1Y", "All"), default="All")
+    history = ui.last_days(ui.value_history_with_today("you", performance), choice)
+    if len(history) < 3:
+        st.info("This chart fills in after the market closes on your account's first trading day.",
+                icon=":material/show_chart:")
+    else:
+        ui.comparison_chart(history, height=260)
+with allocation_box:
+    st.subheader("Where your money is")
+    by_stock, by_sector = st.tabs(["By stock", "By sector"])
+    with by_stock:
+        ui.allocation_chart({**{h.ticker: h.value for h in portfolio.holdings}, "Cash": portfolio.cash})
+    with by_sector:
+        sp500 = storage.load_sp500()
+        sectors = dict(zip(sp500["ticker"], sp500["sector"])) if sp500 is not None else {}
+        totals = {}
+        for h in portfolio.holdings:
+            sector = sectors.get(h.ticker, "Left the S&P 500")
+            totals[sector] = totals.get(sector, 0.0) + h.value
+        ui.allocation_chart({**totals, "Cash": portfolio.cash})
+    if portfolio.holdings:
+        biggest = portfolio.holdings[0]
+        st.caption(f"Your biggest holding, {biggest.ticker}, is {biggest.value / portfolio.total_value:.0%} of "
+                   "your account. Spreading money across more stocks and sectors lowers the risk "
+                   "of one bad stock hurting you a lot. This is called diversification.")
 
 st.subheader("Holdings")
 if portfolio.holdings:

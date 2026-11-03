@@ -23,9 +23,7 @@ except StockAIError as error:
 main, side = st.columns([2, 1], gap="large")
 
 with main:
-    gain = performance.account_value - acct.starting_cash
-    ui.hero("AI trader's account", ui.money(performance.account_value),
-            ui.change_html(gain, performance.account_gain_percent, "since opening"))
+    ui.account_hero("AI trader's account", autotrader.OWNER, performance, acct.starting_cash)
     st.caption(f"Opened {performance.since[:10]} with {ui.money(acct.starting_cash)} of pretend cash. "
                f"The same money in the S&P 500 would be {ui.money(performance.benchmark_value)} "
                f"({performance.benchmark_gain_percent:+.2f}%).")
@@ -69,6 +67,10 @@ with main:
     else:
         st.caption("Nothing right now. It buys when a stock reaches a 60% chance of rising.")
 
+    if portfolio.holdings:
+        st.markdown("**Where its money is**")
+        ui.allocation_chart({**{h.ticker: h.value for h in portfolio.holdings}, "Cash": portfolio.cash})
+
     st.subheader("Its trades")
     trades = account.get_trades(autotrader.OWNER)
     if trades:
@@ -87,6 +89,15 @@ with main:
         st.caption("No trades yet.")
 
 with side:
+    with st.container(border=True):
+        st.markdown(":material/leaderboard: **Leaderboard**")
+        entries = [("AI trader", performance.account_gain_percent, ui.ORANGE)]
+        if storage.load_account("you") is not None:
+            entries.append(("You", ui.portfolio_and_performance("you")[1].account_gain_percent, ui.BLUE))
+        entries.append(("S&P 500", performance.benchmark_gain_percent, ui.MUTED))
+        entries.sort(key=lambda entry: entry[1], reverse=True)
+        ui.leaderboard_chart(entries)
+        st.caption("Each account's gain or loss since it opened. The S&P 500 line is since the AI trader opened.")
     with st.container(border=True):
         st.markdown(":material/smart_toy: **How the AI trader works**")
         st.markdown(

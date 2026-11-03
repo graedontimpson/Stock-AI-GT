@@ -53,12 +53,14 @@ else:
     if backtest.calibration:
         st.markdown("**Do the probabilities mean what they say?** When the method gave a stock a "
                     "certain chance of rising, this is how often it really rose:")
-        st.dataframe(pd.DataFrame([{
-            "Chance given": b["bucket"],
-            "Forecasts": b["forecasts"],
-            "Actually rose": b["rose_share"] * 100,
-        } for b in backtest.calibration]), hide_index=True, column_config={
-            "Actually rose": st.column_config.ProgressColumn(format="%.1f%%", min_value=0, max_value=100),
-        })
+        ui.calibration_chart(backtest.calibration)
+        with st.expander("See the numbers"):
+            st.dataframe(pd.DataFrame([{
+                "Chance given": b["bucket"],
+                "Forecasts": b["forecasts"],
+                "Actually rose": b["rose_share"] * 100,
+            } for b in backtest.calibration]), hide_index=True, column_config={
+                "Actually rose": st.column_config.ProgressColumn(format="%.1f%%", min_value=0, max_value=100),
+            })
 
 ui.footer()

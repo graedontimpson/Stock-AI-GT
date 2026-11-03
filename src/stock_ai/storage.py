@@ -192,6 +192,15 @@ def archive_account(owner: str = "you") -> None:
             source.unlink()
 
 
+def load_watchlist() -> list[str]:
+    """Tickers the user starred to keep an eye on, in the order they were added."""
+    return _read_json(_path("watchlist.json")) or []
+
+
+def save_watchlist(tickers: list[str]) -> None:
+    _write_json(_path("watchlist.json"), tickers)
+
+
 def load_ai_last_run() -> str | None:
     """The day the AI trader last ran, so it trades at most once a day."""
     data = _read_json(_path(ACCOUNT_FOLDERS["ai"], "last_run.json"))

@@ -89,3 +89,17 @@ def test_archive_account_copies_then_clears(isolated):
     assert {p.name for p in archived[0].iterdir()} == {"account.json", "trades.csv"}
     assert storage.load_account() is None
     assert storage.load_trades() == []
+
+
+def test_watchlist_round_trip():
+    assert storage.load_watchlist() == []
+    storage.save_watchlist(["AAA", "BBB"])
+    assert storage.load_watchlist() == ["AAA", "BBB"]
+
+
+def test_your_account_and_the_ai_account_are_kept_apart():
+    storage.save_account(Account("2026-01-02T10:00:00-05:00", 100_000.0, 250.0, 400.0), "ai")
+    storage.append_trade(Trade(1, "2026-01-02T11:00:00-05:00", "AAA", "buy", 1, 10.0, "", "buy"), "ai")
+    assert storage.load_account("you") is None
+    assert storage.load_trades("you") == []
+    assert len(storage.load_trades("ai")) == 1

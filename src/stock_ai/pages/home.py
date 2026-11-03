@@ -16,9 +16,7 @@ except StockAIError as error:
 main, side = st.columns([2, 1], gap="large")
 
 with main:
-    gain = performance.account_value - acct.starting_cash
-    ui.hero("Your account", ui.money(performance.account_value),
-            ui.change_html(gain, performance.account_gain_percent, "since opening"))
+    ui.account_hero("Your account", "you", performance, acct.starting_cash)
     behind = "ahead of" if performance.ahead_by >= 0 else "behind"
     st.caption(f"The same {ui.money(acct.starting_cash)} in the S&P 500 would be worth "
                f"{ui.money(performance.benchmark_value)} ({performance.benchmark_gain_percent:+.2f}%). "
@@ -68,6 +66,36 @@ with main:
         st.caption(f"Suggestions from {results.date}, using prices up to {as_of}. "
                    f"{len(results.skipped)} stocks could not be scored.")
 
+    @st.fragment
+    def market_section():
+        market = ui.market_snapshot()
+        if market.empty:
+            return
+        title, span_box = st.columns([3, 2], vertical_alignment="bottom")
+        title.subheader("Market movers")
+        with span_box:
+            span = st.segmented_control("Period", ["1 day", "1 month"], default="1 day", key="market-span",
+                                        label_visibility="collapsed") or "1 day"
+        column = "change_1d" if span == "1 day" else "change_1m"
+        st.caption(f"S&P 500 stocks, using closing prices up to {market['date'].iloc[0]:%b %d, %Y}.")
+        gainers, losers = st.columns(2)
+        for box, heading, rows in [(gainers, "Top gainers", market.nlargest(5, column)),
+                                   (losers, "Top losers", market.nsmallest(5, column))]:
+            with box, st.container(border=True):
+                st.markdown(f"**{heading}**")
+                for row in rows.itertuples():
+                    name, change = st.columns([3, 2], vertical_alignment="center")
+                    if name.button(row.ticker, key=f"move-{heading}-{row.ticker}", type="tertiary", help=row.company):
+                        ui.open_stock(row.ticker)
+                    value = getattr(row, column)
+                    change.markdown(f"<div style='text-align:right' class='{ui.direction(value)}'>{value:+.2%}</div>",
+                                    unsafe_allow_html=True)
+        st.markdown("**How each sector moved**")
+        ui.change_bars(market.groupby("sector", as_index=False)[column].mean(), "sector", column)
+        st.caption("The average change of the stocks in each sector.")
+
+    market_section()
+
 with side:
     with st.container(border=True):
         ui.stat(st, "Buying power", ui.money(portfolio.cash))
@@ -78,8 +106,10 @@ with side:
         with st.container(border=True):
             _, ai = ui.portfolio_and_performance(autotrader.OWNER)
             ui.stat(st, ":material/smart_toy: AI trader", ui.money(ai.account_value))
-            st.markdown(ui.change_html(ai.account_value - acct.starting_cash, ai.account_gain_percent,
-                                       "since opening"), unsafe_allow_html=True)
+            ai_today, ai_today_percent = ui.today_change(autotrader.OWNER, ai)
+            st.markdown(ui.change_html(ai_today, ai_today_percent, "today") + "<br>"
+                        + ui.change_html(ai.account_value - acct.starting_cash, ai.account_gain_percent,
+                                         "since opening"), unsafe_allow_html=True)
             if st.button("See what the AI is trading", width="stretch"):
                 st.switch_page("pages/ai_trader.py")
 
@@ -96,9 +126,30 @@ with side:
             if series is not None and len(series) > 1:
                 with chart:
                     ui.sparkline(series.iloc[-30:])
+            today = ui.day_change_html(holding.ticker, holding.current_price, holding.price_as_of)
             price.markdown(f"**{ui.money(holding.current_price)}**  \n"
-                           f"<span class='{ui.direction(holding.gain)}'>{holding.gain_percent:+.2f}%</span>"
+                           + (f"{today}<span class='muted'> today</span><br>" if today else "")
+                           + f"<span class='{ui.direction(holding.gain)}'>{holding.gain_percent:+.2f}%</span>"
                            f"<span class='muted'> total</span>",
                            unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown(":material/star: **Watchlist**")
+        watchlist = storage.load_watchlist()
+        if not watchlist:
+            st.caption("Stocks you star on a stock page show up here, so you can follow them without buying.")
+        for ticker in watchlist:
+            series = ui.closes(ticker)
+            if series is None or len(series) < 2:
+                continue
+            name, chart, price = st.columns([2, 2, 2], vertical_alignment="center")
+            if name.button(ticker, key=f"watch-{ticker}", type="tertiary"):
+                ui.open_stock(ticker)
+            with chart:
+                ui.sparkline(series.iloc[-30:])
+            change = series.iloc[-1] / series.iloc[-2] - 1
+            price.markdown(f"**{ui.money(series.iloc[-1])}**  \n"
+                           f"<span class='{ui.direction(change)}'>{change:+.2%}</span>"
+                           f"<span class='muted'> last day</span>", unsafe_allow_html=True)
 
 ui.footer()

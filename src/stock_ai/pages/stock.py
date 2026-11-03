@@ -27,11 +27,15 @@ def browse():
     """No stock chosen: a sortable list of every S&P 500 stock. Clicking a row opens it."""
     st.subheader("Browse the S&P 500")
     st.caption("Click a row to open the stock, or use the search box above. Click a column title to sort.")
+    market = ui.market_snapshot().set_index("ticker")
     rows = []
     for t, name in names.items():
         suggestion = results.find(t) if results else None
+        moves = market.loc[t] if t in market.index else None
         rows.append({
             "Ticker": t, "Company": name, "Sector": sectors[t],
+            "Price": moves["close"] if moves is not None else None,
+            "Last day": moves["change_1d"] * 100 if moves is not None else None,
             "AI suggestion": ui.action_text(suggestion.action) if suggestion else "—",
             "Chance of rising": suggestion.probability_up * 100 if suggestion else None,
             "Risk": suggestion.risk.capitalize() if suggestion else "—",
@@ -42,8 +46,11 @@ def browse():
         table = table[table["Sector"] == sector].reset_index(drop=True)
     event = st.dataframe(
         table, hide_index=True, width="stretch", height=560, on_select="rerun", selection_mode="single-row",
-        column_config={"Chance of rising": st.column_config.ProgressColumn(
-            "Chance of rising in 3 months", format="%.0f%%", min_value=0, max_value=100)},
+        column_config={
+            "Price": st.column_config.NumberColumn(format="dollar"),
+            "Last day": st.column_config.NumberColumn("Last day's change", format="%+.2f%%"),
+            "Chance of rising": st.column_config.ProgressColumn(
+                "Chance of rising in 3 months", format="%.0f%%", min_value=0, max_value=100)},
     )
     if event.selection.rows:
         ui.open_stock(table.iloc[event.selection.rows[0]]["Ticker"])
@@ -64,9 +71,15 @@ main, side = st.columns([2, 1], gap="large")
 
 with main:
     st.markdown(f"<span class='muted'>{sectors[ticker]}</span>", unsafe_allow_html=True)
-    st.header(f"{names[ticker]} ({ticker})", anchor=False)
+    heading, star = st.columns([5, 1], vertical_alignment="center")
+    heading.header(f"{names[ticker]} ({ticker})", anchor=False)
+    watching = ticker in storage.load_watchlist()
+    if star.button("Watching" if watching else "Watch", icon=":material/star:" if watching else ":material/star_border:",
+                   type="secondary", help="Show this stock in the watchlist on Home"):
+        ui.toggle_watch(ticker)
+        st.rerun()
     price = live.price if live else (float(series.iloc[-1]) if series is not None else None)
-    previous = ui.previous_close(ticker, live)
+    previous = ui.previous_close(ticker, live.as_of.date() if live else None)
     if price is not None and previous:
         change = ui.change_html(price - previous, (price / previous - 1) * 100, "today")
     else:
@@ -79,18 +92,29 @@ with main:
         st.caption("We couldn't get a current price, so this is the last saved close. Trading needs a "
                    "current price; try again in a minute.")
 
+    history = storage.load_prices(ticker)
+
     @st.fragment
     def chart():
-        if series is None or series.empty:
+        if history is None or len(history) < 2:
             st.info("No price history saved for this stock yet.")
             return
-        choice = ui.range_picker(f"range-{ticker}")
-        days = ui.RANGES[choice]
-        ui.price_chart(series.iloc[-days:] if days else series)
+        ranges, style, extras = st.columns([3, 1.4, 2.2], vertical_alignment="center")
+        with ranges:
+            choice = ui.range_picker(f"range-{ticker}")
+        with style:
+            kind = st.segmented_control("Chart", ["Line", "Candles"], default="Line", key=f"style-{ticker}",
+                                        label_visibility="collapsed") or "Line"
+        with extras:
+            averages = st.pills("Averages", ["50-day average", "200-day average"], selection_mode="multi",
+                                key=f"avg-{ticker}", label_visibility="collapsed")
+        ui.stock_chart(history, ui.RANGES[choice], kind, averages)
+        if averages:
+            st.caption("A moving average is the average closing price over the last 50 or 200 trading days. "
+                       "The AI uses how far the price is above or below them.")
 
     chart()
 
-    history = storage.load_prices(ticker)
     if history is not None and len(history) > 1:
         year = history.iloc[-252:]
         st.markdown("**Key statistics**")
@@ -128,7 +152,9 @@ with main:
                 else:
                     st.caption("The method has not beaten that baseline by at least 2 points for this stock, "
                                "so the suggestion is Hold.")
-            with st.expander("What pushed the chance up or down"):
+            st.markdown("**What pushed the chance up or down**")
+            ui.contributions_chart(suggestion.contributions)
+            with st.expander("See the numbers"):
                 st.dataframe(pd.DataFrame([{
                     "Input": c.label,
                     "Value": round(c.value, 4),
@@ -171,7 +197,8 @@ with side:
         rows[1].markdown(f"<div style='text-align:right'><b>{ui.money(estimate)}</b></div>", unsafe_allow_html=True)
         st.divider()
         if side_choice == "Buy":
-            st.caption(f"{ui.money(cash)} buying power available")
+            affordable = int(cash // price) if price else 0
+            st.caption(f"{ui.money(cash)} buying power available · enough for up to {affordable} shares")
         else:
             st.caption(f"You own {owned} shares, so you can sell up to {owned}")
 
@@ -200,7 +227,9 @@ with side:
             review(side_choice, int(shares))
 
     if "order_done" in st.session_state:
-        st.success(st.session_state.pop("order_done"), icon=":material/check_circle:")
+        message = st.session_state.pop("order_done")
+        st.toast(message, icon=":material/check_circle:")
+        st.success(message, icon=":material/check_circle:")
 
     if position:
         value = owned * price if price is not None else None
